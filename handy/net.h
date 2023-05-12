@@ -17,6 +17,7 @@ struct net {
     static T ntoh(T v) {
         return port::htobe(v);
     }
+    static int tcp_sockopt(int fd);
     static int setNonBlock(int fd, bool value = true);
     static int setReuseAddr(int fd, bool value = true);
     static int setReusePort(int fd, bool value = true);

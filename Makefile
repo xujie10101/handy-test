@@ -48,11 +48,13 @@ endif
 PROJECT_DIR      		:= $(shell pwd)
 
 INC_PATH			:= $(PROJECT_DIR)				\
+						$(PROJECT_DIR)/src			\
 						$(PROJECT_DIR)/sqlite3	\
 						$(PROJECT_DIR)/http	\
 						$(PROJECT_DIR)/handy
 
 SRC_PATH			:= $(PROJECT_DIR)			\
+					$(PROJECT_DIR)/src			\
 					$(PROJECT_DIR)/sqlite3	\
 				   $(PROJECT_DIR)/http		\
 				   	$(PROJECT_DIR)/handy

@@ -6,9 +6,71 @@
 #include <string>
 #include "logging.h"
 #include "util.h"
+#include "internal.h"
 
 using namespace std;
 namespace handy {
+
+    
+int net::tcp_sockopt(int fd)
+{
+	int optval = 0x01;
+#ifdef WIN32
+	u_long flag = 0x01;
+	ioctlsocket(fd, FIONBIO, &flag);
+#else
+
+	int flags = fcntl(fd, F_GETFL, 0);
+
+	if (flags == -1) {
+		return -1;
+	}
+
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK)) {
+		return -1;
+	}
+#endif
+
+	optval = 0x400000;
+	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
+		(char*)&optval, sizeof(int))) {
+		return -1;
+	}
+
+	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF,
+		(char*)&optval, sizeof(int))) {
+		return -1;
+	}
+
+	optval = 0x01;
+	if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,
+		(char*)&optval, sizeof(int))) {
+		return WSAGetLastError();
+	}
+
+	if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+		(const char*)&optval, sizeof(int))) {
+		return -1;
+	}
+#if	0
+	{
+		int  snd_size = 0, rcv_size = 0;
+		socklen_t optlen = sizeof(snd_size);
+
+		if(getsockopt(fd , SOL_SOCKET , SO_SNDBUF , &snd_size , &optlen)){
+			return -1;     
+		}
+		printf("tcp send_buf = %d \n" , snd_size);
+
+		if( getsockopt(fd , SOL_SOCKET , SO_RCVBUF , &rcv_size , &optlen)){
+			return -1;
+		}   
+		printf("tcp recv_buf fd = %d \n" , rcv_size);
+
+	}
+#endif
+	return 0;
+}
 
 int net::setNonBlock(int fd, bool value) {
     int flags = fcntl(fd, F_GETFL, 0);

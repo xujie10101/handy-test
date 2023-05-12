@@ -43,6 +43,25 @@ struct HttpMsg {
 };
 
 struct HttpRequest : public HttpMsg {
+    // enum HttpMethodType {
+    //     HTTP_METHOD_NONE,
+    //     HTTP_METHOD_GET,
+    //     HTTP_METHOD_POST,
+    //     HTTP_METHOD_HEAD,
+    //     HTTP_METHOD_PUT,
+    //     HTTP_METHOD_DELETE,
+    //     HTTP_METHOD_OPTIONS,
+    //     HTTP_METHOD_RESP
+    // };
+    // const std::map<std::string, int> map_http_method_type = {
+    //     { "GET", HttpMethodType::HTTP_METHOD_GET },
+    //     { "POST", HttpMethodType::HTTP_METHOD_POST },
+    //     { "HEAD", HttpMethodType::HTTP_METHOD_HEAD },
+    //     { "PUT", HttpMethodType::HTTP_METHOD_PUT },
+    //     { "DELETE", HttpMethodType::HTTP_METHOD_DELETE },
+    //     { "OPTIONS", HttpMethodType::HTTP_METHOD_OPTIONS }
+    // };
+
     HttpRequest() { clear(); }
     std::map<std::string, std::string> args;
     std::string method, uri, query_uri;
@@ -126,13 +145,6 @@ typedef HttpConnPtr::HttpCallBack HttpCallBack;
 
 // http服务器
 struct HttpServer : public TcpServer {
-    enum HttpMethodType {
-        HTTP_METHOD_NONE,
-        HTTP_METHOD_GET,
-        HTTP_METHOD_POST,
-        HTTP_METHOD_OPTIONS,
-        HTTP_METHOD_RESP
-    };
     HttpServer(EventBases *base);
     template <class Conn = TcpConn>
     void setConnType() {

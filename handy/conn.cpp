@@ -18,6 +18,7 @@ void TcpConn::attach(EventBase *base, int fd, Ip4Addr local, Ip4Addr peer) {
     local_ = local;
     peer_ = peer;
     delete channel_;
+    // fatalif(net::tcp_sockopt(fd) != 0, "channel set tcp_sockopt failed");
     channel_ = new Channel(base, fd, kWriteEvent | kReadEvent);
     trace("tcp constructed %s - %s fd: %d", local_.toString().c_str(), peer_.toString().c_str(), fd);
     TcpConnPtr con = shared_from_this();
@@ -182,7 +183,7 @@ void TcpConn::handleWrite(const TcpConnPtr &con) {
 
 ssize_t TcpConn::isend(const char *buf, size_t len) {
     size_t sended = 0;
-    while (len > sended) {
+    while (len > sended && state_ == State::Connected) {
         ssize_t wd = writeImp(channel_->fd(), buf + sended, len - sended);
         trace("channel %lld fd %d write %ld bytes", (long long) channel_->id(), channel_->fd(), wd);
         if (wd > 0) {
