@@ -2,6 +2,7 @@
 #include "file.h"
 #include "logging.h"
 #include "status.h"
+#include <sstream>
 
 using namespace std;
 
@@ -253,6 +254,40 @@ HttpServer::HttpServer(EventBases *bases) : TcpServer(bases) {
         });
         return hcon.tcp;
     });
+}
+
+HttpMethod::HttpMethod(int code, std::string name) {
+    _codes.insert(code);
+    _names.insert(name);
+}
+
+HttpMethod& HttpMethod::operator|(HttpMethod hm) {
+    std::set<int> *codes = hm.get_codes();
+    _codes.insert(codes->begin(), codes->end());
+    std::set<std::string> *names = hm.get_names();
+    _names.insert(names->begin(), names->end());
+    return *this;
+}
+
+std::set<int> *HttpMethod::get_codes() {
+    return &_codes;
+}
+
+std::set<std::string> *HttpMethod::get_names() {
+    return &_names;
+}
+
+std::string HttpMethod::get_names_str() {
+    std::stringstream ss;
+    size_t i = 0;
+    for (std::set<std::string>::iterator it = _names.begin(); it != _names.end(); ++it) {
+        ss << *it;
+        if (i != _names.size() - 1) {
+            ss << ", ";
+        }
+        i++;
+    }
+    return ss.str();
 }
 
 }  // namespace handy

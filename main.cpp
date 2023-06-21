@@ -307,6 +307,40 @@ void preHandle(const HttpConnPtr &con) {
 	sendJson(con, JsonObject1);
 }
 
+void response_file(const HttpConnPtr &con) {
+	// CData sFileName = GetUrlPath(con.getRequest().uri.c_str(), "/");
+	CData sFileName = con.getRequest().uri.c_str();
+	std::map<CData, CData>::iterator Iter;
+	if (sFileName.empty() || sFileName == "/") { sFileName = "/index.html";LOGFMTI("----------"); }
+	LOGFMTI("%s", sFileName.c_str());
+	if ((Iter = mMapFile.find(sFileName)) != mMapFile.end()) {
+		// CAutoMutex AutoMutex(m_mutexMapFile);
+		con.sendFile(Iter->second.c_str());
+		// usleep(200);
+	}
+	else {
+		HttpResponse resp;
+		resp.setNotFound();
+		con.sendResponse(resp);
+		LOGFMTE("%s", sFileName.c_str());
+	}
+}
+
+void login(const HttpConnPtr &con) {
+	CData ApiStr = con.getRequest().uri;
+	HttpResponse resp;
+	resp.body = Slice("");
+	con.sendResponse(resp);
+	con->close();
+}
+
+void removeSubstring(std::string& mainString, const std::string& substring) {
+    size_t pos = mainString.find(substring);
+    if (pos != std::string::npos) {
+        mainString.erase(pos, substring.length());
+    }
+}
+
 int main(int argc, const char *argv[]) {
     GetFilePaths("web");
     ModifytxQueue();
@@ -330,81 +364,96 @@ int main(int argc, const char *argv[]) {
     int r = sample.bind("", port);
     exitif(r, "bind failed %d %s", errno, strerror(errno));
 
-    std::map<std::string, std::string> headers;
-    headers["/hello"]="GET";
-    headers["/"]="GET";
-    headers["/test"]="POST";
-	headers["/license/getProjectInfo"]="POST";
-	headers["/license/getMachineCode"]="POST";
-	headers["/license/preHandle"]="POST";
+    std::map<std::string, std::pair<HttpCallBack, HttpMethod>> headers;
+    headers["/hello"]={ login, GET_METHOD };
+    headers["/"]={response_file, GET_METHOD};
+    headers[" "]={response_file, GET_METHOD};
+	headers["/license/getProjectInfo"]={getProjectInfo, POST_METHOD};
+	headers["/license/getMachineCode"]={getMachineCode, POST_METHOD};
+	headers["/license/preHandle"]={preHandle, POST_METHOD};
 	for (const auto& pair : mMapFile) {
 		// pair.first 是map的键，pair.second是map的值
 		// 在这里对pair进行操作
-		headers[pair.second.ToString().substr(3)]="GET";
-		LOGFMTA("----:%s",pair.first.c_str());
-		LOGFMTA("====:%s",pair.second.ToString().substr(3).c_str());
+		// headers[pair.second.ToString().substr(3)]="GET";
+		// LOGFMTA("----:%s",pair.first.c_str());
+		// LOGFMTA("====:%s",pair.second.ToString().substr(3).c_str());
 	}
 
-    for (auto &hd : headers) {
-        sample.onMessage(hd.second, hd.first, [](const HttpConnPtr &con) {
-            if(0 == strncmp(con.getRequest().method.c_str(),"GET",sizeof("GET"))){
-                string v = con.getRequest().version;
-                string m = con.getRequest().method;
-                string b = con.getRequest().getBody();
-                string a = con.getRequest().getArg("");
-				CData sFileName = GetUrlPath(con.getRequest().uri.c_str(), "/");
-				std::map<CData, CData>::iterator Iter;
-				if (sFileName.empty() || sFileName == "/") { sFileName = "index.html";LOGFMTI("----------"); }
-				LOGFMTI("%s", sFileName.c_str());
-				if ((Iter = mMapFile.find(sFileName)) != mMapFile.end()) {
-					// CAutoMutex AutoMutex(m_mutexMapFile);
-					con.sendFile(Iter->second.c_str());
-					// usleep(200);
-				}
-				else {
-                    HttpResponse resp;
-                    resp.setNotFound();
-                    con.sendResponse(resp);
-					LOGFMTE("%s", sFileName.c_str());
-				}
-				// con->close();
-            }else if(0 == strncmp(con.getRequest().method.c_str(),"POST",sizeof("POST"))){
-				CData ApiStr = con.getRequest().uri;
-				if(ApiStr == "/license/getProjectInfo"){
-					getProjectInfo(con);
-				}else if (ApiStr == "/license/getMachineCode") {
-					getMachineCode(con);
-				}else if (ApiStr == "/license/preHandle") {
-					preHandle(con);
-				}
-				con->close();
-                // string v = con.getRequest().version;
-                // string m = con.getRequest().method;
-                // string b = con.getRequest().getBody();
-                // HttpResponse resp;
-                // resp.body = Slice(b);
-                // con.sendResponse(resp);
-                // if (v == "HTTP/1.0") {
-                //     con->close();
-                // }
-            }else if(0 == strncmp(con.getRequest().method.c_str(),"OPTIONS",sizeof("OPTIONS"))){
-                string v = con.getRequest().version;
-                string m = con.getRequest().method;
-                string b = con.getRequest().getBody();
-                HttpResponse resp;
-                resp.body = Slice("");
-                con.sendResponse(resp);
-                con->close();
-            }else{
-                string v = con.getRequest().version;
-                string m = con.getRequest().method;
-                HttpResponse resp;
-                resp.body = Slice("NULL");
-                con.sendResponse(resp);
-                con->close();
-            }
-        });
-    }
+	std::string tmp;
+    std::string value;
+    for (const auto& pair : mMapFile) {
+        tmp = pair.second.ToString();
+        value = tmp;
+        removeSubstring(tmp, "web");
+        headers[tmp]={ response_file, GET_METHOD };
+        mMapFile.erase(pair.first);
+        mMapFile[tmp] = value;
+	}
+
+	for (auto &hd : headers) {
+		sample.onMessage(hd.second.second.get_names_str(), hd.first, hd.second.first);
+	}
+
+    // for (auto &hd : headers) {
+    //     sample.onMessage(hd.second, hd.first, [](const HttpConnPtr &con) {
+    //         if(0 == strncmp(con.getRequest().method.c_str(),"GET",sizeof("GET"))){
+    //             string v = con.getRequest().version;
+    //             string m = con.getRequest().method;
+    //             string b = con.getRequest().getBody();
+    //             string a = con.getRequest().getArg("");
+	// 			CData sFileName = GetUrlPath(con.getRequest().uri.c_str(), "/");
+	// 			std::map<CData, CData>::iterator Iter;
+	// 			if (sFileName.empty() || sFileName == "/") { sFileName = "index.html";LOGFMTI("----------"); }
+	// 			LOGFMTI("%s", sFileName.c_str());
+	// 			if ((Iter = mMapFile.find(sFileName)) != mMapFile.end()) {
+	// 				// CAutoMutex AutoMutex(m_mutexMapFile);
+	// 				con.sendFile(Iter->second.c_str());
+	// 				// usleep(200);
+	// 			}
+	// 			else {
+    //                 HttpResponse resp;
+    //                 resp.setNotFound();
+    //                 con.sendResponse(resp);
+	// 				LOGFMTE("%s", sFileName.c_str());
+	// 			}
+	// 			// con->close();
+    //         }else if(0 == strncmp(con.getRequest().method.c_str(),"POST",sizeof("POST"))){
+	// 			CData ApiStr = con.getRequest().uri;
+	// 			if(ApiStr == "/license/getProjectInfo"){
+	// 				getProjectInfo(con);
+	// 			}else if (ApiStr == "/license/getMachineCode") {
+	// 				getMachineCode(con);
+	// 			}else if (ApiStr == "/license/preHandle") {
+	// 				preHandle(con);
+	// 			}
+	// 			con->close();
+    //             // string v = con.getRequest().version;
+    //             // string m = con.getRequest().method;
+    //             // string b = con.getRequest().getBody();
+    //             // HttpResponse resp;
+    //             // resp.body = Slice(b);
+    //             // con.sendResponse(resp);
+    //             // if (v == "HTTP/1.0") {
+    //             //     con->close();
+    //             // }
+    //         }else if(0 == strncmp(con.getRequest().method.c_str(),"OPTIONS",sizeof("OPTIONS"))){
+    //             string v = con.getRequest().version;
+    //             string m = con.getRequest().method;
+    //             string b = con.getRequest().getBody();
+    //             HttpResponse resp;
+    //             resp.body = Slice("");
+    //             con.sendResponse(resp);
+    //             con->close();
+    //         }else{
+    //             string v = con.getRequest().version;
+    //             string m = con.getRequest().method;
+    //             HttpResponse resp;
+    //             resp.body = Slice("NULL");
+    //             con.sendResponse(resp);
+    //             con->close();
+    //         }
+    //     });
+    // }
 
     // // sample.onGet("/hello", [](const HttpConnPtr &con) {
     // sample.onMessage("GET", "/hello", [](const HttpConnPtr &con) {

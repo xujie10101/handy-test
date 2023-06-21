@@ -161,4 +161,27 @@ struct HttpServer : public TcpServer {
     std::map<std::string, std::map<std::string, HttpCallBack>> cbs_;
 };
 
+class HttpMethod {
+public:
+    HttpMethod() {};
+    HttpMethod(int code, std::string name);
+    HttpMethod& operator|(HttpMethod hm);
+    std::set<int> *get_codes();
+    std::set<std::string> *get_names();
+    /**
+     * the names like "GET, POST"
+     */
+    std::string get_names_str();
+private:
+    std::set<int> _codes;
+    std::set<std::string> _names;
+};
+
+static HttpMethod GET_METHOD = HttpMethod(1, "GET");
+static HttpMethod POST_METHOD = HttpMethod(2, "POST");
+static HttpMethod OPTIONS_METHOD = HttpMethod(3, "OPTIONS");
+
+// typedef void (*method_handler_ptr)(HttpRequest& request, HttpResponse &response);
+// typedef void (*method_handler_ptr)(const HttpConnPtr &con);
+
 }  // namespace handy
