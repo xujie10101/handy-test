@@ -119,6 +119,7 @@ void TcpConn::handleRead(const TcpConnPtr &con) {
         int rd = 0;
         if (channel_->fd() >= 0) {
             rd = readImp(channel_->fd(), input_.end(), input_.space());
+            printf("======= %s\n", input_.end());
             trace("channel %lld fd %d readed %d bytes", (long long) channel_->id(), channel_->fd(), rd);
         }
         if (rd == -1 && errno == EINTR) {
